@@ -1,6 +1,8 @@
 import time
 import serial
 import sys,tty,termios
+
+
 class _Getch:
     def __call__(self):
         fd = sys.stdin.fileno()
@@ -12,24 +14,40 @@ class _Getch:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
+
 def get():
     inkey = _Getch()
     while(1):
         k=inkey()
         if k!='':break
-    if k=='\x1b':
-        k2 = inkey()
-        k3 = inkey()
-        if k3=='A':
-            print ("Line")
-            s.write("Line\n".encode())
-        if k3=='B':
-            print ("Apriltag")
-            s.write("Apriltag\n".encode())
-        time.sleep(2)
+    if k == 'L':
+        print ("Line")
+        s.write("/doLine/run 1\n".encode())
+    elif k == 'A':
+        print ("Apriltag")
+        s.write("/doApriltag/run 1\n".encode())
+    
+    elif k=='l':
+        print("quit Line")
+        s.write("/doLine/run 0\n".encode())
+    elif k == 'a':
+        print("quit Apriltag")
+        s.write("/doApriltag/run 0\n".encode())
     elif k=='q':
         print ("quit")
         return 0
+    elif k=='B':
+        print("Block")
+        s.write("/doBlock/run 1\n".encode())
+    elif k=='b':
+        print("quit Block")
+        s.write("/doBlock/run 0\n".encode())
+    elif k == 'P':
+        print("Parking")
+        s.write("/doParking/run 1\n".encode())
+    elif k == 'p':
+        print("quit Parking")
+        s.write("/doParking/run 0\n".encode())
     else:
         print ("not an arrow key!")
     return 1
