@@ -1,6 +1,6 @@
 #include"mbed.h"
 #include "bbcar.h"
-
+#include "bbcar_rpc.h"
 #include "mbed_rpc.h"
 #include <math.h>
 
@@ -36,7 +36,7 @@ RPCFunction rpcBlock(&doBlock, "doBlock");
 Thread Blockthread;
 Thread Parkingthread;
 volatile int pingping = 0;
-volatile int position1 = 34, position2 = 34; //, position1, position2 are defined by the distance between apriltag and parking space
+volatile int position1 = 34, position2 = 38; //, position1, position2 are defined by the distance between apriltag and parking space
 volatile int car_ping = 0;//position2 = 12.5-5.5
 volatile float ping_block = 0;
 
@@ -105,143 +105,37 @@ int main(){
          }
          buf[j] = fputc(recv, devout);
       }
+      printf("%s", buf);
       RPC::call(buf, outbuf);
    //RPC::call(buf, outbuf);
    }
 }
-void Line_mode(){
-    uart.set_baud(9600);
-   char buf[256];
-   while(1){
-      memset(buf, 0, 256);
-      int i = 0;
-      int end = 0;
-      int haveread = 0;
 
-      int y = 0;
-      char open[1];
-      open[0] = 'L';
-      uart.write(open, sizeof(open));
-      count_new = 0;
-      int nocount = 0;
-      if (ping_block <= 20) {
-          printf("over\n");
-      }
-      while (haveread == 0 && end == 0 && i < 256 && count_new < 100 && ping_block > 20) {
-         if(uart.readable()){
-            char recv[1];
-            uart.read(recv, sizeof(recv));
-            y = 1;
-            //pc.write(recv, sizeof(recv));
-            buf[i] = recv[0];
-            if (recv[0] == '\n') {
-               end = 1;
-
-               haveread = 1;
-               break;
-            }
-            i++;
-         }
-         //printf("read\n");
-         if (count_new == 99 && y == 0) {
-            uart.write(open, sizeof(open));
-            count_new = 0;
-            printf("no\n");
-            nocount++;
-            if (nocount < 10) {
-               car.goStraight(-5);
-               ThisThread::sleep_for(50ms);
-            }
-         }
-      }      /*for (int k = 0; k < mark; k++) {
-         printf("%c", buf[k]);
-      }
-      printf("\n");*/
-      //ThisThread::sleep_for(1000ms);
-      int x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-      int k = 0;
-      for (k = 0; buf[k] != ','; k++) {
-         x1 = 10*x1;
-         if (buf[k] == 0) break;
-         x1 += buf[k] - '0';
-      }
-      k++;
-      for (; buf[k] != ','; k++) {
-         y1 = 10*y1;
-         if (buf[k] == 0) break;
-         y1 += buf[k] - '0';
-      }
-      k++;
-      for (; buf[k] != ','; k++) {
-         x2 = 10*x2;
-         if (buf[k] == 0) break;
-         x2 += buf[k] - '0';
-      }
-      k++;
-      for (; buf[k] != '\n'; k++) {
-         y2 = 10*y2;
-         if (buf[k] == 0) break;
-         y2 += buf[k] - '0';
-      }
-      //printf("x1 = %d, y1 = %d, x2 = %d, y2 = %d\n", x1, y1, x2, y2);
-      //ThisThread::sleep_for(1000ms);
-      if (haveread == 1) {
-         printf("x1 = %d, y1 = %d, x2 = %d, y2 = %d\n", x1, y1, x2, y2);
-         if (((y1 - y2) <= 1 && y1 >= y2)|| ((y2 - y1) <= 1 && y2 >= y1)) {
-            car.stop();
-            ThisThread::sleep_for(2s);
-            printf("jieur");
-         } else {
-            printf("hello\n");
-            /*if (x1 < 80 and x2 < 80) {
-               car.turn(-10, 0.2);
-               ThisThread::sleep_for(1s);
-            } else if (x1 > 80 and x2 > 80) {
-               car.turn(-10, -0.2);
-               ThisThread::sleep_for(1s);
-            } else */if (x2 > x1) {
-               if (x2 - x1 > 5) {
-                  if (x2 - x1 > 130) {
-                     car.stop();
-                     ThisThread::sleep_for(2s);
-                  } else {
-                     car.turn(-20, -0.4);
-                     ThisThread::sleep_for(2s);
-                  }
-              }
-              else {
-                  car.goStraight(-20);
-                  ThisThread::sleep_for(2s);
-              }
-            } else {
-               if (x1 - x2 > 5) {
-                  if (x1 - x2 > 130) {
-                     car.stop();
-                     ThisThread::sleep_for(2s);
-                  } else {
-                     car.turn(-20, 0.4);
-                     ThisThread::sleep_for(2s);
-                  }
-               } else {
-                  car.goStraight(-20);
-                  ThisThread::sleep_for(2s);
-               }
-            }
-         }
-         car.stop();
-         ThisThread::sleep_for(1s);
-      }
-   }
-}
-void doLine(Arguments *in, Reply *out) {
-    int z = in->getArg<int>();
-    if (z) {
-        Linethread.start(Line_mode);
-    } else {
-        Linethread.terminate();
-        car.stop();
+void Parking_mode() {
+    int d1 = position1 - 5;
+    int d2 = position2 - car_ping - 14;
+    // for East
+    printf("%d, %d\n", d1, d2);
+    car.goStraight(20);
+    steps0 = 0;
+    while(steps0*6.5*3.14/32 < d2+11.5) {
+        ThisThread::sleep_for(100ms);
     }
+    steps0 = 0;
+    steps1 = 0;
+    car.turn(20, -0.1);
+    while (steps1*6.5*3.14/32 < 11*2*3.14/4) {
+        ThisThread:: sleep_for(100ms);
+    }
+    steps1 = 0;
+    steps0 = 0;
+    car.goStraight(20);
+    while(steps0*6.5*3.14/32 < d1+3.5) {
+        ThisThread::sleep_for(100ms);
+    }
+    car.stop();
 }
+
 
 void Apriltag_mode() {
     uart.set_baud(9600);
@@ -436,6 +330,159 @@ void Apriltag_mode() {
    }
 }
 
+void Block_mode(){
+    steps0 = 0;
+    car.turn(-20, 0.1);
+    while (steps0*6.5*3.14/32 < 10.5*2*3.14/4) {
+        ThisThread::sleep_for(100ms);
+    }
+    steps1 = 0;
+    car.turn(-100, -0.3);
+    while (steps1*6.5*3.14/32 < 10.5*2*3.14*165/270) {
+        ThisThread::sleep_for(100ms);
+    }
+    car.stop();
+}
+
+void Line_mode(){
+    uart.set_baud(9600);
+   char buf[256];
+   while(1){
+      memset(buf, 0, 256);
+      int i = 0;
+      int end = 0;
+      int haveread = 0;
+
+      int y = 0;
+      char open[1];
+      open[0] = 'L';
+      uart.write(open, sizeof(open));
+      count_new = 0;
+      int nocount = 0;
+      /*if (ping_block <= 20) {
+         //printf("over\n");
+         Blockthread.start(Block_mode);
+      }*/
+      while (haveread == 0 && end == 0 && i < 256 && count_new < 100 && ping_block > 15) {
+         if(uart.readable()){
+            char recv[1];
+            uart.read(recv, sizeof(recv));
+            y = 1;
+            //pc.write(recv, sizeof(recv));
+            buf[i] = recv[0];
+            if (recv[0] == '\n') {
+               end = 1;
+
+               haveread = 1;
+               break;
+            }
+            i++;
+         }
+         //printf("read\n");
+         if (count_new == 99 && y == 0) {
+            uart.write(open, sizeof(open));
+            count_new = 0;
+            printf("no\n");
+            nocount++;
+            if (nocount < 10) {
+               car.goStraight(-5);
+               ThisThread::sleep_for(50ms);
+            }
+         }
+      }      /*for (int k = 0; k < mark; k++) {
+         printf("%c", buf[k]);
+      }
+      printf("\n");*/
+      //ThisThread::sleep_for(1000ms);
+      int x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      int k = 0;
+      for (k = 0; buf[k] != ','; k++) {
+         x1 = 10*x1;
+         if (buf[k] == 0) break;
+         x1 += buf[k] - '0';
+      }
+      k++;
+      for (; buf[k] != ','; k++) {
+         y1 = 10*y1;
+         if (buf[k] == 0) break;
+         y1 += buf[k] - '0';
+      }
+      k++;
+      for (; buf[k] != ','; k++) {
+         x2 = 10*x2;
+         if (buf[k] == 0) break;
+         x2 += buf[k] - '0';
+      }
+      k++;
+      for (; buf[k] != '\n'; k++) {
+         y2 = 10*y2;
+         if (buf[k] == 0) break;
+         y2 += buf[k] - '0';
+      }
+      //printf("x1 = %d, y1 = %d, x2 = %d, y2 = %d\n", x1, y1, x2, y2);
+      //ThisThread::sleep_for(1000ms);
+      if (haveread == 1) {
+         printf("x1 = %d, y1 = %d, x2 = %d, y2 = %d\n", x1, y1, x2, y2);
+         if (((y1 - y2) <= 1 && y1 >= y2)|| ((y2 - y1) <= 1 && y2 >= y1)) {
+            car.goStraight(-5);
+            ThisThread::sleep_for(50ms);
+            printf("jieur");
+         } else {
+            printf("hello\n");
+            /*if (x1 < 80 and x2 < 80) {
+               car.turn(-10, 0.2);
+               ThisThread::sleep_for(1s);
+            } else if (x1 > 80 and x2 > 80) {
+               car.turn(-10, -0.2);
+               ThisThread::sleep_for(1s);
+            } else */if (x2 > x1) {
+               if (x2 - x1 > 5) {
+                  if (x2 - x1 > 130) {
+                     car.stop();
+                     ThisThread::sleep_for(2s);
+                  } else {
+                     car.turn(-20, -0.4);
+                     ThisThread::sleep_for(2s);
+                  }
+              }
+              else {
+                  car.goStraight(-20);
+                  ThisThread::sleep_for(2s);
+              }
+            } else {
+               if (x1 - x2 > 5) {
+                  if (x1 - x2 > 130) {
+                     car.stop();
+                     ThisThread::sleep_for(2s);
+                     car.goStraight(-5);
+                     ThisThread::sleep_for(50ms);
+                  } else {
+                     car.turn(-20, 0.4);
+                     ThisThread::sleep_for(2s);
+                  }
+               } else {
+                  car.goStraight(-20);
+                  ThisThread::sleep_for(2s);
+               }
+            }
+         }
+         car.stop();
+         ThisThread::sleep_for(1s);
+      }
+   }
+}
+void doLine(Arguments *in, Reply *out) {
+    int z = in->getArg<int>();
+    if (z) {
+        Linethread.start(Line_mode);
+    } else {
+        Linethread.terminate();
+        car.stop();
+    }
+}
+
+
+
 void doApriltag(Arguments *in, Reply *out) {
     int z = in->getArg<int>();
     if (z) {
@@ -446,19 +493,7 @@ void doApriltag(Arguments *in, Reply *out) {
     }
 }
 
-void Block_mode(){
-    steps0 = 0;
-    car.turn(-20, 0.1);
-    while (steps0*6.5*3.14/32 < 10.5*2*3.14*110/360) {
-        ThisThread::sleep_for(100ms);
-    }
-    steps1 = 0;
-    car.turn(-100, -0.2);
-    while (steps1*6.5*3.14/32 < 10.5*2*3.14*160/270) {
-        ThisThread::sleep_for(100ms);
-    }
-    car.stop();
-}
+
 
 void doBlock(Arguments *in, Reply *out) {
     int z = in->getArg<int>();
@@ -470,30 +505,7 @@ void doBlock(Arguments *in, Reply *out) {
     }
 }
 
-void Parking_mode() {
-    int d1 = position1 - 5;
-    int d2 = position2 - car_ping - 14 - 10;
-    // for East
-    printf("%d, %d\n", d1, d2);
-    car.goStraight(20);
-    steps0 = 0;
-    while(steps0*6.5*3.14/32 < d2+11.5) {
-        ThisThread::sleep_for(100ms);
-    }
-    steps0 = 0;
-    steps1 = 0;
-    car.turn(20, -0.1);
-    while (steps1*6.5*3.14/32 < 11*2*3.14/4) {
-        ThisThread:: sleep_for(100ms);
-    }
-    steps1 = 0;
-    steps0 = 0;
-    car.goStraight(20);
-    while(steps0*6.5*3.14/32 < d1+3.5) {
-        ThisThread::sleep_for(100ms);
-    }
-    car.stop();
-}
+
 
 void doParking(Arguments *in, Reply *out) {
     int z = in->getArg<int>();

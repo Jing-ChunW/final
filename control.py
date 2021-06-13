@@ -24,30 +24,26 @@ def get():
         print ("Line")
         s.write("/doLine/run 1\n".encode())
     elif k == 'A':
-        print ("Apriltag")
-        s.write("/doApriltag/run 1\n".encode())
-    
-    elif k=='l':
-        print("quit Line")
-        s.write("/doLine/run 0\n".encode())
-    elif k == 'a':
-        print("quit Apriltag")
-        s.write("/doApriltag/run 0\n".encode())
-    elif k=='q':
-        print ("quit")
-        return 0
-    elif k=='B':
-        print("Block")
-        s.write("/doBlock/run 1\n".encode())
-    elif k=='b':
         print("quit Block")
         s.write("/doBlock/run 0\n".encode())
+        print ("Apriltag")
+        s.write("/doApriltag/run 1\n".encode())
+    elif k=='q':
+        print ("quit")
+        s.write("/doParking/run 0\n".encode())
+        return 0
+    elif k=='B':
+        print("quit Line")
+        s.write("/doLine/run 0\n".encode())
+
+        print("Block")
+        s.write("/doBlock/run 1\n".encode())
     elif k == 'P':
+        print("quit Apriltag")
+        s.write("/doApriltag/run 0\n".encode())
         print("Parking")
         s.write("/doParking/run 1\n".encode())
-    elif k == 'p':
-        print("quit Parking")
-        s.write("/doParking/run 0\n".encode())
+
     else:
         print ("not an arrow key!")
     return 1
@@ -57,3 +53,17 @@ if len(sys.argv) < 1:
 s = serial.Serial(sys.argv[1])
 while get():
     i = 0
+
+'''
+    elif k=='l':
+        print("quit Line")
+        s.write("/doLine/run 0\n".encode())
+    elif k == 'a':
+        print("quit Apriltag")
+        s.write("/doApriltag/run 0\n".encode())
+    elif k=='b':
+        print("quit Block")
+        s.write("/doBlock/run 0\n".encode())
+        elif k == 'p':
+        print("quit Parking")
+        s.write("/doParking/run 0\n".encode())'''
