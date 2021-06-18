@@ -1,6 +1,12 @@
 import pyb, sensor, image, time, math
 
+
+THRESHOLD = (5, 70, -23, 15, -57, 0) # Grayscale threshold for dark things...
+
 sensor.reset()
+sensor.set_vflip(True)
+sensor.set_hmirror(True)
+sensor.set_pixformat(sensor.RGB565)
 sensor.set_pixformat(sensor.GRAYSCALE)
 sensor.set_framesize(sensor.QQVGA) # we run out of memory if the resolution is much bigger...
 sensor.skip_frames(time = 2000)
@@ -21,35 +27,27 @@ uart.init(9600,bits=8,parity = None, stop=1, timeout_char=1000)
 
 while(True):
    clock.tick()
-   img = sensor.snapshot()
+
    i = 0;
    a = uart.readchar()
-
+   
    if (a == 76):
-    print("start Read")
-    for l in img.find_line_segments(merge_distance = 1, max_theta_diff = 5):
-
-      if ((l.magnitude() > 5) & (l.y1() < 30) & (l.y2() < 30) & (i == 0)):
-         i = 1
-         img.draw_line(l.line(), color = (255, 0, 0))
-         #print(l)
-         print_args = (l.x1(), l.y1(), l.x2(), l.y2())
-      # Translation units are unknown. Rotation units are in degrees.
-
-      # select need data
-         uart.write(("%d,%d,%d,%d\n" % print_args).encode())
-         print("%d,%d,%d,%d\n" % print_args)
-
-      #uart.write(("Tx: %f, Ty %f, Tz %f, Rx %f, Ry %f, Rz %f" % print_args).encode())
-   #uart.write(("FPS %f\r\n" % clock.fps()).encode())
+       sensor.set_windowing((17,95,131,23))
+       img  = sensor.snapshot().binary([THRESHOLD])
+       line = img.get_regression([(255,255)], robust = True)
+       if (line):
+          img.draw_line(line.line(), color = 127)
+          print(line.theta())
+          uart.write(("%d,%d\n" % (line.theta(), line.x1())).encode())
    elif (a == 65):
-      for tag in img.find_apriltags(fx=f_x, fy=f_y, cx=c_x, cy=c_y): # defaults to TAG36H11
-         img.draw_rectangle(tag.rect(), color = (255, 0, 0))
-         img.draw_cross(tag.cx(), tag.cy(), color = (0, 255, 0))
-         # The conversion is nearly 6.2cm to 1 -> translation
-         print_args = (tag.x_translation(), tag.y_translation(), tag.z_translation(), \
-            degrees(tag.x_rotation()), degrees(tag.y_rotation()), degrees(tag.z_rotation()))
-         # Translation units are unknown. Rotation units are in degrees.
-         uart.write(("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n" % print_args).encode())
-         
-      #uart.write(("FPS %f\n" % clock.fps()).encode())
+       sensor.set_windowing((1,2,158,117))
+       img = sensor.snapshot()
+       for tag in img.find_apriltags(fx=f_x, fy=f_y, cx=c_x, cy=c_y): # defaults to TAG36H11
+          img.draw_rectangle(tag.rect(), color = (255, 0, 0))
+          img.draw_cross(tag.cx(), tag.cy(), color = (0, 255, 0))
+                   # The conversion is nearly 6.2cm to 1 -> translation
+          print_args = (tag.x_translation(), tag.y_translation(), tag.z_translation(), \
+          degrees(tag.x_rotation()), degrees(tag.y_rotation()), degrees(tag.z_rotation()))
+                   # Translation units are unknown. Rotation units are in degrees.
+          uart.write(("%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n" % print_args).encode())
+          print("Tx: %f, Ty %f, Tz %f, Rx %f, Ry %f, Rz %f" % print_args)
