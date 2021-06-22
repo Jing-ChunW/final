@@ -1,5 +1,5 @@
 # final
-執行main.cpp
+執行main.cpp，不需要使用control.py
 在main.cpp內96-429行是四個不同subtask，用一個變數去記錄現在在第幾個subtask，分別做跟著直線、繞過障礙物、垂直apriltag、停車。
 每個subtask後都會用xbee傳一個字母，可以打開screen看(sudo screen /dev/ttyUSB0)，跟著直線(L)、繞過障礙物(B)、垂直apriltag(A)、停車(P)。
 L:不斷的傳訊息叫openmv傳資訊回來，在根據傳回來的數值判斷車子要往哪裡走，在車子距離障礙物特定距離(用ping測量)，xbee會傳L出去，紀錄subtask的變數就會跳下一個數字，去執行下一個subtask。
